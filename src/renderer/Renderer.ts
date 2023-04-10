@@ -3,6 +3,8 @@ import vertexShader from "../shaders/vertex.wgsl?raw";
 import { TriangleMesh } from "../meshes/TriangleMesh";
 import { mat4 } from "gl-matrix";
 import { CubeMesh } from "../meshes/CubeMesh";
+import bebImg from "../images/beb.png";
+import Material from "../material";
 
 export class Renderer {
   canvas: HTMLCanvasElement;
@@ -26,31 +28,28 @@ export class Renderer {
   aspectRatio!: number;
   cubeMesh!: CubeMesh;
   activeMesh!: CubeMesh | TriangleMesh;
+  material!: Material;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
   }
 
   async initialize() {
-    try {
-      await this.setupDevice();
-    } catch (e) {
-      alert(e);
+    await this.setupDevice();
 
-      return;
-    }
+    this.initResize();
 
-    console.log("WebGPU initialized");
-
-    this.onResize();
-
-    window.addEventListener("resize", this.onResize.bind(this));
-
-    this.createAssets();
+    await this.createAssets();
 
     await this.makePipeline();
 
     this.render();
+  }
+
+  initResize() {
+    this.onResize();
+
+    window.addEventListener("resize", this.onResize.bind(this));
   }
 
   onResize() {
@@ -99,7 +98,17 @@ export class Renderer {
         {
           binding: 0,
           visibility: GPUShaderStage.VERTEX,
-          buffer: { type: "uniform" },
+          buffer: {},
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {},
         },
       ],
     });
@@ -112,6 +121,14 @@ export class Renderer {
           resource: {
             buffer: this.uniformBuffer,
           },
+        },
+        {
+          binding: 1,
+          resource: this.material.textureView,
+        },
+        {
+          binding: 2,
+          resource: this.material.sampler,
         },
       ],
     });
@@ -151,11 +168,14 @@ export class Renderer {
     });
   }
 
-  createAssets() {
+  async createAssets() {
     this.triangleMesh = new TriangleMesh(this.device);
     this.cubeMesh = new CubeMesh(this.device);
+    this.material = new Material(this.device);
 
     this.activeMesh = this.cubeMesh;
+
+    await this.material.initialize(bebImg);
   }
 
   setupMvp() {
