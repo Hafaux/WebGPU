@@ -20,8 +20,6 @@ export default class Material {
       arrayLayerCount: 1,
     };
 
-    console.warn(this.texture);
-
     this.textureView = this.texture.createView(viewDestriptor);
 
     const samplerDestriptor: GPUSamplerDescriptor = {
