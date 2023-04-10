@@ -5,7 +5,7 @@ async function init() {
 
   const renderer = new Renderer(canvas);
 
-  renderer.Initialize();
+  renderer.initialize();
 }
 
 init();

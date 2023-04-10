@@ -31,7 +31,7 @@ export class Renderer {
     this.canvas = canvas;
   }
 
-  async Initialize() {
+  async initialize() {
     try {
       await this.setupDevice();
     } catch (e) {
