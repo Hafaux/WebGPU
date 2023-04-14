@@ -81,4 +81,8 @@ function getProjectionMatrix(
   return projectionMatrix as Float32Array;
 }
 
+export function degToRad(degrees: number) {
+  return (degrees * Math.PI) / 180;
+}
+
 export { getMvpMatrix, getModelViewMatrix, getProjectionMatrix };

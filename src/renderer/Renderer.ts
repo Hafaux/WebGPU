@@ -4,9 +4,11 @@ import { TriangleMesh } from "../meshes/TriangleMesh";
 import { mat4 } from "gl-matrix";
 import { CubeMesh } from "../meshes/CubeMesh";
 import bebImg from "../images/beb.png";
-import Material from "../material";
+import Material from "./Material";
+import Camera from "./Camera";
+import Triangle from "../meshes/Triangle";
 
-export class Renderer {
+export default class Renderer {
   canvas: HTMLCanvasElement;
 
   // Device/Context objects
@@ -23,27 +25,30 @@ export class Renderer {
   // Assets
   triangleMesh!: TriangleMesh;
 
-  t: number = 0;
-
   aspectRatio!: number;
   cubeMesh!: CubeMesh;
   activeMesh!: CubeMesh | TriangleMesh;
   material!: Material;
+  objectBuffer!: GPUBuffer;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
   }
 
-  async initialize() {
-    await this.setupDevice();
+  async init() {
+    try {
+      await this.setupDevice();
+    } catch (e) {
+      alert(e);
+
+      return;
+    }
 
     this.initResize();
 
     await this.createAssets();
 
     await this.makePipeline();
-
-    this.render();
   }
 
   initResize() {
@@ -89,7 +94,8 @@ export class Renderer {
 
   async makePipeline() {
     this.uniformBuffer = this.device.createBuffer({
-      size: 4 * 4 * 4 * 3,
+      label: "Uniform Buffer",
+      size: 64 * 3,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
@@ -109,6 +115,14 @@ export class Renderer {
           binding: 2,
           visibility: GPUShaderStage.FRAGMENT,
           sampler: {},
+        },
+        {
+          binding: 3,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: {
+            type: "read-only-storage",
+            hasDynamicOffset: false,
+          },
         },
       ],
     });
@@ -130,6 +144,12 @@ export class Renderer {
           binding: 2,
           resource: this.material.sampler,
         },
+        {
+          binding: 3,
+          resource: {
+            buffer: this.objectBuffer,
+          },
+        },
       ],
     });
 
@@ -137,7 +157,7 @@ export class Renderer {
       bindGroupLayouts: [bindGroupLayout],
     });
 
-    this.pipeline = this.device.createRenderPipeline({
+    this.pipeline = await this.device.createRenderPipelineAsync({
       vertex: {
         module: this.device.createShaderModule({
           code: vertexShader,
@@ -173,43 +193,28 @@ export class Renderer {
     this.cubeMesh = new CubeMesh(this.device);
     this.material = new Material(this.device);
 
+    this.objectBuffer = this.device.createBuffer({
+      label: "Model Buffer",
+      size: 64 * 1024,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+
     this.activeMesh = this.cubeMesh;
 
     await this.material.initialize(bebImg);
   }
 
-  setupMvp() {
-    const projection = mat4.create();
+  render(camera: Camera, triangles: Triangle[]) {
+    const proj = mat4.create();
 
-    mat4.perspective(
-      projection,
-      (60 / 180) * Math.PI,
-      this.aspectRatio,
-      0.1,
-      100
-    );
+    mat4.perspective(proj, (60 / 180) * Math.PI, this.aspectRatio, 0.1, 10);
 
-    const view = mat4.create();
+    const view = camera.getView();
 
-    mat4.lookAt(view, [-5, 0, 0], [0, 0, 0], [0, 0, 1]);
+    // this.device.queue.writeBuffer(this.objectBuffer, 0, data, 0, data.length);
 
-    const model = mat4.create();
-
-    mat4.rotate(model, model, this.t, [0, 1, 1]);
-
-    this.device.queue.writeBuffer(this.uniformBuffer, 0, <ArrayBuffer>model);
     this.device.queue.writeBuffer(this.uniformBuffer, 64, <ArrayBuffer>view);
-    this.device.queue.writeBuffer(
-      this.uniformBuffer,
-      128,
-      <ArrayBuffer>projection
-    );
-  }
-
-  render() {
-    this.t += 0.01;
-
-    this.setupMvp();
+    this.device.queue.writeBuffer(this.uniformBuffer, 128, <ArrayBuffer>proj);
 
     //command encoder: records draw commands for submission
     const commandEncoder = this.device.createCommandEncoder();
@@ -231,12 +236,18 @@ export class Renderer {
 
     renderpass.setPipeline(this.pipeline);
     renderpass.setVertexBuffer(0, this.activeMesh.buffer);
-    renderpass.setBindGroup(0, this.bindGroup);
-    renderpass.draw(this.activeMesh.verticeCount, 1, 0, 0);
+
+    triangles.forEach((triangle) => {
+      const model = triangle.getModel();
+
+      this.device.queue.writeBuffer(this.uniformBuffer, 0, <ArrayBuffer>model);
+
+      renderpass.setBindGroup(0, this.bindGroup);
+      renderpass.draw(this.activeMesh.verticeCount, 1, 0, 0);
+    });
+
     renderpass.end();
 
     this.device.queue.submit([commandEncoder.finish()]);
-
-    requestAnimationFrame(this.render.bind(this));
   }
 }

@@ -1,4 +1,4 @@
-import { getImageBitmap } from "./utils/image";
+import { getImageBitmap } from "../utils/image";
 
 export default class Material {
   texture!: GPUTexture;
@@ -10,7 +10,7 @@ export default class Material {
   async initialize(src: string) {
     await this.loadImage(src);
 
-    const viewDestriptor: GPUTextureViewDescriptor = {
+    this.textureView = this.texture.createView({
       format: "rgba8unorm",
       dimension: "2d",
       aspect: "all",
@@ -18,20 +18,16 @@ export default class Material {
       mipLevelCount: 1,
       baseArrayLayer: 0,
       arrayLayerCount: 1,
-    };
+    });
 
-    this.textureView = this.texture.createView(viewDestriptor);
-
-    const samplerDestriptor: GPUSamplerDescriptor = {
+    this.sampler = this.device.createSampler({
       addressModeU: "repeat",
       addressModeV: "repeat",
       magFilter: "linear",
       minFilter: "linear",
       mipmapFilter: "linear",
       maxAnisotropy: 1,
-    };
-
-    this.sampler = this.device.createSampler(samplerDestriptor);
+    });
   }
 
   async loadImage(src: string) {
