@@ -6,6 +6,7 @@ import { CubeMesh } from "../meshes/CubeMesh";
 import bebImg from "../images/beb.png";
 import Material from "./Material";
 import Camera from "./Camera";
+import Triangle from "../meshes/Triangle";
 
 export default class Renderer {
   canvas: HTMLCanvasElement;
@@ -179,8 +180,8 @@ export default class Renderer {
 
       primitive: {
         topology: "triangle-list",
-        // cullMode: "back",
-        // frontFace: "ccw",
+        cullMode: "back",
+        frontFace: "ccw",
       },
 
       layout: pipelineLayout,
@@ -198,22 +199,22 @@ export default class Renderer {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
-    this.activeMesh = this.triangleMesh;
+    this.activeMesh = this.cubeMesh;
 
     await this.material.initialize(bebImg);
   }
 
-  render(camera: Camera, data: Float32Array, objectCount: number) {
+  render(camera: Camera, triangles: Triangle[]) {
     const proj = mat4.create();
 
     mat4.perspective(proj, (60 / 180) * Math.PI, this.aspectRatio, 0.1, 10);
 
     const view = camera.getView();
 
-    this.device.queue.writeBuffer(this.objectBuffer, 0, data, 0, data.length);
+    // this.device.queue.writeBuffer(this.objectBuffer, 0, data, 0, data.length);
 
-    this.device.queue.writeBuffer(this.uniformBuffer, 0, <ArrayBuffer>view);
-    this.device.queue.writeBuffer(this.uniformBuffer, 64, <ArrayBuffer>proj);
+    this.device.queue.writeBuffer(this.uniformBuffer, 64, <ArrayBuffer>view);
+    this.device.queue.writeBuffer(this.uniformBuffer, 128, <ArrayBuffer>proj);
 
     //command encoder: records draw commands for submission
     const commandEncoder = this.device.createCommandEncoder();
@@ -236,8 +237,14 @@ export default class Renderer {
     renderpass.setPipeline(this.pipeline);
     renderpass.setVertexBuffer(0, this.activeMesh.buffer);
 
-    renderpass.setBindGroup(0, this.bindGroup);
-    renderpass.draw(3, objectCount, 0, 0);
+    triangles.forEach((triangle) => {
+      const model = triangle.getModel();
+
+      this.device.queue.writeBuffer(this.uniformBuffer, 0, <ArrayBuffer>model);
+
+      renderpass.setBindGroup(0, this.bindGroup);
+      renderpass.draw(this.activeMesh.verticeCount, 1, 0, 0);
+    });
 
     renderpass.end();
 

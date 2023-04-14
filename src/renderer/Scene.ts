@@ -1,7 +1,7 @@
 import Camera from "./Camera";
 import Triangle from "../meshes/Triangle";
 import Controls from "../input/Controls";
-import { vec2, vec3, mat4 } from "gl-matrix";
+import { vec2, vec3 } from "gl-matrix";
 
 export default class Scene {
   triangles: Triangle[] = [];
@@ -21,22 +21,9 @@ export default class Scene {
 
     this.objectData = new Float32Array(16 * 1024);
 
-    let i = 0;
-    for (let y = -5; y < 5; y++) {
-      const triangle = new Triangle([2, y, 0], 0);
+    const triangle = new Triangle([2, 0, 0], 0);
 
-      this.triangles.push(triangle);
-
-      const blankMatrix = mat4.create();
-
-      for (let j = 0; j < 16; j++) {
-        this.objectData[16 * i + j] = blankMatrix.at(j)!;
-      }
-
-      i++;
-
-      this.triangleCount++;
-    }
+    this.triangles.push(triangle);
 
     this.initMouseMovement();
   }
@@ -78,20 +65,8 @@ export default class Scene {
       this.cameraVelocity[1] * this.cameraSpeed
     );
 
-    let i = 0;
-
     this.triangles.forEach((triangle) => {
       triangle.update();
-
-      const model = triangle.getModel();
-
-      if (!model) return;
-
-      for (let j = 0; j < 16; j++) {
-        this.objectData[16 * i + j] = model.at(j)!;
-      }
-
-      i++;
     });
 
     this.camera.update();
@@ -113,7 +88,7 @@ export default class Scene {
   }
 
   getTriangles() {
-    return this.objectData;
+    return this.triangles;
   }
 
   getPlayer() {

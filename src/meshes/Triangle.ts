@@ -1,5 +1,5 @@
 import { vec3, mat4 } from "gl-matrix";
-import { DegToRad } from "../utils/math";
+import { degToRad } from "../utils/math";
 
 export default class Triangle {
   position: vec3;
@@ -19,7 +19,7 @@ export default class Triangle {
     this.model = mat4.create();
 
     mat4.translate(this.model, this.model, this.position);
-    mat4.rotateZ(this.model, this.model, DegToRad(this.eulers[2]));
+    mat4.rotateZ(this.model, this.model, degToRad(this.eulers[2]));
   }
 
   getModel() {

@@ -20,11 +20,7 @@ export default class App {
   update() {
     this.scene.update();
 
-    this.renderer.render(
-      this.scene.getPlayer(),
-      this.scene.getTriangles(),
-      this.scene.triangleCount
-    );
+    this.renderer.render(this.scene.getPlayer(), this.scene.getTriangles());
 
     requestAnimationFrame(this.update.bind(this));
   }

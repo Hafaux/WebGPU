@@ -1,5 +1,5 @@
 import { vec3, mat4 } from "gl-matrix";
-import { DegToRad } from "../utils/math";
+import { degToRad } from "../utils/math";
 
 export default class Camera {
   position: vec3;
@@ -19,9 +19,9 @@ export default class Camera {
 
   update() {
     this.forwards = [
-      Math.cos(DegToRad(this.eulers[2])) * Math.cos(DegToRad(this.eulers[1])),
-      Math.sin(DegToRad(this.eulers[2])) * Math.cos(DegToRad(this.eulers[1])),
-      Math.sin(DegToRad(this.eulers[1])),
+      Math.cos(degToRad(this.eulers[2])) * Math.cos(degToRad(this.eulers[1])),
+      Math.sin(degToRad(this.eulers[2])) * Math.cos(degToRad(this.eulers[1])),
+      Math.sin(degToRad(this.eulers[1])),
     ];
 
     vec3.cross(this.right, this.forwards, [0, 0, 1]);

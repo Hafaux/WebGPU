@@ -24,7 +24,7 @@ fn main(
   @location(1) vertexColor: vec2<f32>) -> Fragment {
     var output : Fragment;
 
-    output.Position = transformUBuffer.projection * transformUBuffer.view * objects.model[ID] * vertexPostion;
+    output.Position = transformUBuffer.projection * transformUBuffer.view * transformUBuffer.model * vertexPostion;
     output.UV = vertexColor;
     output.FragPosition = vertexPostion;
 
