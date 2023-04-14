@@ -27,13 +27,12 @@ export class CubeMesh {
       +1, -1, -1, 1, 1, -1, +1, -1, 0, 0,
     ]);
 
-    const descriptor: GPUBufferDescriptor = {
+    this.buffer = device.createBuffer({
+      label: "Cube Mesh Buffer",
       size: vertices.byteLength,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
       mappedAtCreation: true,
-    };
-
-    this.buffer = device.createBuffer(descriptor);
+    });
 
     new Float32Array(this.buffer.getMappedRange()).set(vertices);
 

@@ -1,11 +1,7 @@
-import { Renderer } from "./renderer/Renderer";
+import App from "./App";
 
-async function init() {
-  const canvas = document.querySelector("canvas")!;
+const canvas = document.querySelector("canvas")!;
 
-  const renderer = new Renderer(canvas);
+const app = new App(canvas);
 
-  renderer.initialize();
-}
-
-init();
+app.init();
