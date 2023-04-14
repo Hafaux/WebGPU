@@ -21,6 +21,12 @@ export default class Renderer {
   bindGroup!: GPUBindGroup;
   pipeline!: GPURenderPipeline;
 
+  // Depth stencil
+  depthStencilAttachment!: GPURenderPassDepthStencilAttachment;
+  depthTexture!: GPUTexture;
+  depthTextureView!: GPUTextureView;
+  depthStencilState!: GPUDepthStencilState;
+
   // Assets
   triangleMesh!: TriangleMesh;
 
@@ -46,6 +52,8 @@ export default class Renderer {
     this.initResize();
 
     await this.createAssets();
+
+    this.makeDepthBufferResources();
 
     await this.makePipeline();
   }
@@ -89,6 +97,40 @@ export default class Renderer {
       format: this.format,
       alphaMode: "opaque",
     });
+  }
+
+  makeDepthBufferResources() {
+    this.depthStencilState = {
+      format: "depth24plus-stencil8",
+      depthWriteEnabled: true,
+      depthCompare: "less-equal",
+    };
+
+    this.depthTexture = this.device.createTexture({
+      size: {
+        width: this.canvas.width,
+        height: this.canvas.height,
+        depthOrArrayLayers: 1,
+      },
+      format: "depth24plus-stencil8",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    this.depthTextureView = this.depthTexture.createView({
+      format: "depth24plus-stencil8",
+      aspect: "all",
+    });
+
+    this.depthStencilAttachment = {
+      view: this.depthTextureView,
+
+      depthClearValue: 1.0,
+      depthLoadOp: "clear",
+      depthStoreOp: "store",
+
+      stencilLoadOp: "clear",
+      stencilStoreOp: "discard",
+    };
   }
 
   async makePipeline() {
@@ -179,11 +221,12 @@ export default class Renderer {
 
       primitive: {
         topology: "triangle-list",
-        // cullMode: "back",
-        // frontFace: "
+        cullMode: "back",
+        // frontFace: "ccw",
       },
 
       layout: pipelineLayout,
+      depthStencil: this.depthStencilState,
     });
   }
 
@@ -198,7 +241,7 @@ export default class Renderer {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
-    this.activeMesh = this.triangleMesh;
+    this.activeMesh = this.cubeMesh;
 
     await this.material.initialize(bebImg);
   }
@@ -230,6 +273,7 @@ export default class Renderer {
           storeOp: "store",
         },
       ],
+      depthStencilAttachment: this.depthStencilAttachment,
     });
 
     renderpass.setPipeline(this.pipeline);
