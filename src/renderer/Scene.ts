@@ -1,14 +1,13 @@
 import Camera from "./Camera";
 import Triangle from "../meshes/Triangle";
 import Controls from "../input/Controls";
-import { vec2, vec3 } from "gl-matrix";
+import { mat4, vec2, vec3 } from "gl-matrix";
 
 export default class Scene {
-  triangles: Triangle[] = [];
+  objects: Triangle[] = [];
   camera: Camera;
 
   objectData: Float32Array;
-  triangleCount = 0;
 
   cameraSpeed = 0.03;
   cameraSensitivity = 0.1;
@@ -16,14 +15,20 @@ export default class Scene {
   cameraVelocity: vec2 = [0, 0];
 
   constructor() {
-    this.triangles.push(new Triangle([0, 0, 0], 0));
     this.camera = new Camera([-2, 0, 0], 0, 0);
 
     this.objectData = new Float32Array(16 * 1024);
 
-    const triangle = new Triangle([2, 0, 0], 0);
+    const NUM_OBJECTS = 20;
 
-    this.triangles.push(triangle);
+    for (let i = 0; i < NUM_OBJECTS; i++) {
+      const y = (i / NUM_OBJECTS) * 5 - 2;
+      const z = 0;
+
+      this.objects.push(new Triangle([0, y, z], 0));
+
+      this.objectData.set(mat4.create(), i * 16);
+    }
 
     this.initMouseMovement();
   }
@@ -34,9 +39,9 @@ export default class Scene {
       this.camera.eulers[2] %= 360;
 
       this.camera.eulers[1] = Math.max(
-        -89,
+        -90,
         Math.min(
-          89,
+          90,
           this.camera.eulers[1] - e.movementY * this.cameraSensitivity
         )
       );
@@ -65,8 +70,14 @@ export default class Scene {
       this.cameraVelocity[1] * this.cameraSpeed
     );
 
-    this.triangles.forEach((triangle) => {
+    this.objects.forEach((triangle, i) => {
       triangle.update();
+
+      const model = triangle.getModel();
+
+      if (!model) return;
+
+      this.objectData.set(model, i * 16);
     });
 
     this.camera.update();
@@ -88,7 +99,15 @@ export default class Scene {
   }
 
   getTriangles() {
-    return this.triangles;
+    return this.objects;
+  }
+
+  getObjects() {
+    return this.objectData;
+  }
+
+  getObjectsLength() {
+    return this.objects.length;
   }
 
   getPlayer() {

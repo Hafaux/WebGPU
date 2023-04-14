@@ -6,7 +6,6 @@ import { CubeMesh } from "../meshes/CubeMesh";
 import bebImg from "../images/beb.png";
 import Material from "./Material";
 import Camera from "./Camera";
-import Triangle from "../meshes/Triangle";
 
 export default class Renderer {
   canvas: HTMLCanvasElement;
@@ -95,7 +94,7 @@ export default class Renderer {
   async makePipeline() {
     this.uniformBuffer = this.device.createBuffer({
       label: "Uniform Buffer",
-      size: 64 * 3,
+      size: 64 * 2,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
@@ -180,8 +179,8 @@ export default class Renderer {
 
       primitive: {
         topology: "triangle-list",
-        cullMode: "back",
-        frontFace: "ccw",
+        // cullMode: "back",
+        // frontFace: "
       },
 
       layout: pipelineLayout,
@@ -199,22 +198,21 @@ export default class Renderer {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
-    this.activeMesh = this.cubeMesh;
+    this.activeMesh = this.triangleMesh;
 
     await this.material.initialize(bebImg);
   }
 
-  render(camera: Camera, triangles: Triangle[]) {
+  render(camera: Camera, data: Float32Array, objectCount: number) {
     const proj = mat4.create();
 
-    mat4.perspective(proj, (60 / 180) * Math.PI, this.aspectRatio, 0.1, 10);
+    mat4.perspective(proj, (60 / 180) * Math.PI, this.aspectRatio, 0.1, 100);
 
     const view = camera.getView();
 
-    // this.device.queue.writeBuffer(this.objectBuffer, 0, data, 0, data.length);
-
-    this.device.queue.writeBuffer(this.uniformBuffer, 64, <ArrayBuffer>view);
-    this.device.queue.writeBuffer(this.uniformBuffer, 128, <ArrayBuffer>proj);
+    this.device.queue.writeBuffer(this.objectBuffer, 0, data, 0, data.length);
+    this.device.queue.writeBuffer(this.uniformBuffer, 0, <ArrayBuffer>view);
+    this.device.queue.writeBuffer(this.uniformBuffer, 64, <ArrayBuffer>proj);
 
     //command encoder: records draw commands for submission
     const commandEncoder = this.device.createCommandEncoder();
@@ -235,16 +233,12 @@ export default class Renderer {
     });
 
     renderpass.setPipeline(this.pipeline);
+
     renderpass.setVertexBuffer(0, this.activeMesh.buffer);
 
-    triangles.forEach((triangle) => {
-      const model = triangle.getModel();
+    renderpass.setBindGroup(0, this.bindGroup);
 
-      this.device.queue.writeBuffer(this.uniformBuffer, 0, <ArrayBuffer>model);
-
-      renderpass.setBindGroup(0, this.bindGroup);
-      renderpass.draw(this.activeMesh.verticeCount, 1, 0, 0);
-    });
+    renderpass.draw(this.activeMesh.verticeCount, objectCount, 0, 0);
 
     renderpass.end();
 
