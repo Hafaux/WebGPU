@@ -1,10 +1,14 @@
 import Camera from "./Camera";
 import Triangle from "../meshes/Triangle";
+import Quad from "../meshes/Quad";
 import Controls from "../input/Controls";
 import { mat4, vec2, vec3 } from "gl-matrix";
+import { RenderData } from "../definitions";
 
 export default class Scene {
-  objects: Triangle[] = [];
+  cubes: Triangle[] = [];
+  quads: Quad[] = [];
+
   camera: Camera;
 
   objectData: Float32Array;
@@ -15,22 +19,36 @@ export default class Scene {
   cameraVelocity: vec2 = [0, 0];
 
   constructor() {
-    this.camera = new Camera([-2, 0, 0], 0, 0);
+    this.camera = new Camera([-5, 0, 0.5], 0, 0);
 
     this.objectData = new Float32Array(16 * 1024);
 
-    const NUM_OBJECTS = 20;
+    this.makeCubes();
+    this.makeQuads();
+
+    this.initMouseMovement();
+  }
+
+  makeCubes() {
+    const NUM_OBJECTS = 5;
 
     for (let i = 0; i < NUM_OBJECTS; i++) {
-      const y = (i / NUM_OBJECTS) * 5 - 2;
-      const z = 0;
+      const x = i * 3;
 
-      this.objects.push(new Triangle([0, y, z], 0));
+      this.cubes.push(new Triangle([0, x, 1], 0));
 
       this.objectData.set(mat4.create(), i * 16);
     }
+  }
 
-    this.initMouseMovement();
+  makeQuads() {
+    const NUM_OBJECTS = 1000;
+
+    for (let i = 0; i < NUM_OBJECTS; i++) {
+      this.quads.push(new Quad([(i % 40) - 10, Math.floor(i / 40) - 10, 0]));
+
+      this.objectData.set(mat4.create(), this.cubes.length * 16 + i * 16);
+    }
   }
 
   initMouseMovement() {
@@ -48,7 +66,7 @@ export default class Scene {
     });
   }
 
-  update() {
+  update(deltaT: number) {
     if (Controls.isKeyDown("KeyW")) {
       this.cameraVelocity[1] = 1;
     } else if (Controls.isKeyDown("KeyS")) {
@@ -66,18 +84,28 @@ export default class Scene {
     }
 
     this.moveCamera(
-      this.cameraVelocity[0] * this.cameraSpeed,
-      this.cameraVelocity[1] * this.cameraSpeed
+      this.cameraVelocity[0] * this.cameraSpeed * deltaT,
+      this.cameraVelocity[1] * this.cameraSpeed * deltaT
     );
 
-    this.objects.forEach((triangle, i) => {
-      triangle.update();
+    this.cubes.forEach((triangle, i) => {
+      triangle.update(deltaT);
 
       const model = triangle.getModel();
 
       if (!model) return;
 
       this.objectData.set(model, i * 16);
+    });
+
+    this.quads.forEach((quad, i) => {
+      quad.update();
+
+      const model = quad.getModel();
+
+      if (!model) return;
+
+      this.objectData.set(model, (i + this.cubes.length) * 16);
     });
 
     this.camera.update();
@@ -99,15 +127,26 @@ export default class Scene {
   }
 
   getTriangles() {
-    return this.objects;
+    return this.cubes;
   }
 
-  getObjects() {
+  getObjectData() {
     return this.objectData;
   }
 
+  getRenderData(): RenderData {
+    return {
+      viewTransform: this.camera.getView(),
+      modelTransforms: this.objectData,
+      objectCounts: {
+        TRIANGLE: this.cubes.length,
+        QUAD: this.quads.length,
+      },
+    };
+  }
+
   getObjectsLength() {
-    return this.objects.length;
+    return this.cubes.length;
   }
 
   getPlayer() {

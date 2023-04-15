@@ -4,6 +4,7 @@ import Scene from "./renderer/Scene";
 export default class App {
   renderer: Renderer;
   scene: Scene;
+  previousTime: number = 0;
 
   constructor(public canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -14,17 +15,17 @@ export default class App {
   async init() {
     await this.renderer.init();
 
-    this.update();
+    this.update(0);
   }
 
-  update() {
-    this.scene.update();
+  update(time: number) {
+    const deltaTime = time - this.previousTime;
 
-    this.renderer.render(
-      this.scene.getPlayer(),
-      this.scene.getObjects(),
-      this.scene.getObjectsLength()
-    );
+    this.previousTime = time;
+
+    this.scene.update(deltaTime);
+
+    this.renderer.render(this.scene.getRenderData());
 
     requestAnimationFrame(this.update.bind(this));
   }

@@ -1,13 +1,16 @@
-export class TriangleMesh {
+export class QuadMesh {
   buffer: GPUBuffer;
   bufferLayout: GPUVertexBufferLayout;
 
-  verticeCount = 3;
+  verticeCount = 6;
 
   constructor(device: GPUDevice) {
     const vertices: Float32Array = new Float32Array([
-      0.0, 0.0, 0.5, 0.5, 0.0, 0.0, -0.5, -0.5, 0.0, 1.0, 0.0, 0.5, -0.5, 1.0,
+      -0.5, -0.5, 0.0, 0.0, 0.0, 0.5, -0.5, 0.0, 1.0, 0.0, 0.5, 0.5, 0.0, 1.0,
       1.0,
+
+      0.5, 0.5, 0.0, 1.0, 1.0, -0.5, 0.5, 0.0, 0.0, 1.0, -0.5, -0.5, 0.0, 0.0,
+      0.0,
     ]);
 
     this.buffer = device.createBuffer({

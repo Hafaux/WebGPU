@@ -4,7 +4,7 @@ import { degToRad } from "../utils/math";
 export default class Camera {
   position: vec3;
   eulers: vec3;
-  view?: mat4;
+  view!: mat4;
   forwards: vec3;
   right: vec3;
   up: vec3;

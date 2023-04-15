@@ -12,8 +12,8 @@ export default class Triangle {
     this.eulers[2] = theta || 0;
   }
 
-  update() {
-    this.eulers[2] += 1;
+  update(_deltaT: number) {
+    this.eulers[2] += 0.1 * _deltaT;
     this.eulers[2] = this.eulers[2] % 360;
 
     this.model = mat4.create();
