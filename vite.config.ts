@@ -1,7 +1,10 @@
 import { defineConfig } from "vite";
+import * as dotenv from "dotenv";
 
-const devToken =
-  "AvMV7+QuKgPxuDvjlFx3+twwSmQTXtOiBWJxkIz/C0SdqdDbaYdk6fYULy2nZgs6uu0+ymOmQnAoJDI5JKFfNAoAAABJeyJvcmlnaW4iOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJmZWF0dXJlIjoiV2ViR1BVIiwiZXhwaXJ5IjoxNjkxNzExOTk5fQ==";
+dotenv.config();
+
+const devToken = process.env.ORIGIN_TRIAL_TOKEN || "";
+console.warn(devToken);
 
 export default defineConfig({
   server: {

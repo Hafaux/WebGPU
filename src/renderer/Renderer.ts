@@ -46,13 +46,7 @@ export default class Renderer {
   }
 
   async init() {
-    try {
-      await this.setupDevice();
-    } catch (e) {
-      alert(e);
-
-      return;
-    }
+    await this.setupDevice();
 
     this.initResize();
 

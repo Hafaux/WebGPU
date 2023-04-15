@@ -13,9 +13,13 @@ export default class App {
   }
 
   async init() {
-    await this.renderer.init();
+    try {
+      await this.renderer.init();
 
-    this.update(0);
+      this.update(0);
+    } catch (e) {
+      alert("WebGPU is not supported in this browser: " + e);
+    }
   }
 
   update(time: number) {
