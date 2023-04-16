@@ -1,4 +1,4 @@
-import ObjLoader, { ObjModel } from "./ObjLoader";
+import ObjLoader, { ObjModel } from "../loaders/ObjLoader";
 
 export class ObjMesh {
   buffer!: GPUBuffer;
