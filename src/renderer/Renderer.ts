@@ -3,11 +3,11 @@ import vertexShader from "../shaders/vertex.wgsl?raw";
 import { TriangleMesh } from "../meshes/TriangleMesh";
 import { mat4 } from "gl-matrix";
 import { CubeMesh } from "../meshes/CubeMesh";
-import bebImg from "../images/beb.png";
+import capyImg from "../images/capy.png";
 import floorImg from "../images/grass_0.png";
 import Material from "./Material";
 import { QuadMesh } from "../meshes/QuadMesh";
-import { RenderData } from "../definitions";
+import { RenderData, ObjectType } from "../definitions";
 
 export default class Renderer {
   canvas: HTMLCanvasElement;
@@ -20,9 +20,10 @@ export default class Renderer {
 
   // Pipeline objects
   uniformBuffer!: GPUBuffer;
-  triangleBindGroup!: GPUBindGroup;
-  quadBindGroup!: GPUBindGroup;
   pipeline!: GPURenderPipeline;
+  frameGroupLayout!: GPUBindGroupLayout;
+  materialGroupLayout!: GPUBindGroupLayout;
+  frameBindGroup!: GPUBindGroup;
 
   // Depth stencil
   depthStencilAttachment!: GPURenderPassDepthStencilAttachment;
@@ -31,14 +32,22 @@ export default class Renderer {
   depthStencilState!: GPUDepthStencilState;
 
   // Assets
-  triangleMesh!: TriangleMesh;
-  quadMesh!: TriangleMesh;
-  cubeMesh!: CubeMesh;
+  meshDict!: {
+    [ObjectType.QUAD]: {
+      mesh: QuadMesh;
+      defaultMaterial: Material;
+    };
+    [ObjectType.TRIANGLE]: {
+      mesh: TriangleMesh;
+      defaultMaterial: Material;
+    };
+    [ObjectType.CUBE]: {
+      mesh: CubeMesh;
+      defaultMaterial: Material;
+    };
+  };
 
   aspectRatio!: number;
-  activeMesh!: CubeMesh | TriangleMesh | QuadMesh;
-  triangleMaterial!: Material;
-  quadMaterial!: Material;
   objectBuffer!: GPUBuffer;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -48,9 +57,13 @@ export default class Renderer {
   async init() {
     await this.setupDevice();
 
+    this.makeBindGroupLayouts();
+
     this.initResize();
 
     await this.createAssets();
+
+    this.makeBindGroups();
 
     this.makeDepthBufferResources();
 
@@ -68,6 +81,19 @@ export default class Renderer {
     this.canvas.height = window.innerHeight * window.devicePixelRatio;
 
     this.aspectRatio = this.canvas.width / this.canvas.height;
+
+    // handle depth buffer resize
+    this.depthTexture = this.device.createTexture({
+      size: {
+        width: this.canvas.width,
+        height: this.canvas.height,
+        depthOrArrayLayers: 1,
+      },
+      format: "depth24plus-stencil8",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    this.depthTextureView = this.depthTexture.createView();
   }
 
   async setupDevice() {
@@ -132,14 +158,8 @@ export default class Renderer {
     };
   }
 
-  async makePipeline() {
-    this.uniformBuffer = this.device.createBuffer({
-      label: "Uniform Buffer",
-      size: 64 * 2,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-
-    const bindGroupLayout = this.device.createBindGroupLayout({
+  makeBindGroupLayouts() {
+    this.frameGroupLayout = this.device.createBindGroupLayout({
       entries: [
         {
           binding: 0,
@@ -148,16 +168,6 @@ export default class Renderer {
         },
         {
           binding: 1,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {},
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        },
-        {
-          binding: 3,
           visibility: GPUShaderStage.VERTEX,
           buffer: {
             type: "read-only-storage",
@@ -167,8 +177,37 @@ export default class Renderer {
       ],
     });
 
-    this.triangleBindGroup = this.device.createBindGroup({
-      layout: bindGroupLayout,
+    this.materialGroupLayout = this.device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {},
+        },
+      ],
+    });
+  }
+
+  makeBindGroups() {
+    this.uniformBuffer = this.device.createBuffer({
+      label: "Uniform Buffer",
+      size: 64 * 2,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    this.objectBuffer = this.device.createBuffer({
+      label: "Model Buffer",
+      size: 64 * 1024,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+
+    this.frameBindGroup = this.device.createBindGroup({
+      layout: this.frameGroupLayout,
       entries: [
         {
           binding: 0,
@@ -178,49 +217,40 @@ export default class Renderer {
         },
         {
           binding: 1,
-          resource: this.triangleMaterial.textureView,
-        },
-        {
-          binding: 2,
-          resource: this.triangleMaterial.sampler,
-        },
-        {
-          binding: 3,
           resource: {
             buffer: this.objectBuffer,
           },
         },
       ],
     });
+  }
 
-    this.quadBindGroup = this.device.createBindGroup({
-      layout: bindGroupLayout,
-      entries: [
-        {
-          binding: 0,
-          resource: {
-            buffer: this.uniformBuffer,
-          },
-        },
-        {
-          binding: 1,
-          resource: this.quadMaterial.textureView,
-        },
-        {
-          binding: 2,
-          resource: this.quadMaterial.sampler,
-        },
-        {
-          binding: 3,
-          resource: {
-            buffer: this.objectBuffer,
-          },
-        },
-      ],
-    });
+  async createAssets() {
+    const defaultMaterial = new Material(this.device);
+    const quadMaterial = new Material(this.device);
 
+    await defaultMaterial.initialize(capyImg, this.materialGroupLayout);
+    await quadMaterial.initialize(floorImg, this.materialGroupLayout);
+
+    this.meshDict = {
+      CUBE: {
+        mesh: new CubeMesh(this.device),
+        defaultMaterial: defaultMaterial,
+      },
+      QUAD: {
+        mesh: new QuadMesh(this.device),
+        defaultMaterial: quadMaterial,
+      },
+      TRIANGLE: {
+        mesh: new TriangleMesh(this.device),
+        defaultMaterial: defaultMaterial,
+      },
+    };
+  }
+
+  async makePipeline() {
     const pipelineLayout = this.device.createPipelineLayout({
-      bindGroupLayouts: [bindGroupLayout],
+      bindGroupLayouts: [this.frameGroupLayout, this.materialGroupLayout],
     });
 
     this.pipeline = await this.device.createRenderPipelineAsync({
@@ -229,7 +259,7 @@ export default class Renderer {
           code: vertexShader,
         }),
         entryPoint: "main",
-        buffers: [this.activeMesh.bufferLayout],
+        buffers: [this.meshDict.CUBE.mesh.bufferLayout],
       },
 
       fragment: {
@@ -253,27 +283,6 @@ export default class Renderer {
       layout: pipelineLayout,
       depthStencil: this.depthStencilState,
     });
-  }
-
-  async createAssets() {
-    this.triangleMesh = new TriangleMesh(this.device);
-    this.triangleMaterial = new Material(this.device);
-
-    this.quadMesh = new QuadMesh(this.device);
-    this.quadMaterial = new Material(this.device);
-
-    this.cubeMesh = new CubeMesh(this.device);
-
-    this.objectBuffer = this.device.createBuffer({
-      label: "Model Buffer",
-      size: 64 * 1024,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-
-    this.activeMesh = this.cubeMesh;
-
-    await this.triangleMaterial.initialize(bebImg);
-    await this.quadMaterial.initialize(floorImg);
   }
 
   render(renderables: RenderData) {
@@ -314,30 +323,24 @@ export default class Renderer {
     });
 
     renderpass.setPipeline(this.pipeline);
+    renderpass.setBindGroup(0, this.frameBindGroup);
 
     let objectsDrawn = 0;
 
-    renderpass.setVertexBuffer(0, this.cubeMesh.buffer);
-    renderpass.setBindGroup(0, this.triangleBindGroup);
+    for (const [objectType, objectCount] of Object.entries(
+      renderables.objectCounts
+    )) {
+      if (objectCount <= 0) continue;
 
-    renderpass.draw(
-      this.cubeMesh.verticeCount,
-      renderables.objectCounts.TRIANGLE,
-      0,
-      objectsDrawn
-    );
+      const data = this.meshDict[objectType as ObjectType];
 
-    objectsDrawn += renderables.objectCounts.TRIANGLE;
+      renderpass.setVertexBuffer(0, data.mesh.buffer);
+      renderpass.setBindGroup(1, data.defaultMaterial.bindGroup);
 
-    renderpass.setVertexBuffer(0, this.quadMesh.buffer);
-    renderpass.setBindGroup(0, this.quadBindGroup);
+      renderpass.draw(data.mesh.verticeCount, objectCount, 0, objectsDrawn);
 
-    renderpass.draw(
-      this.quadMesh.verticeCount,
-      renderables.objectCounts.QUAD,
-      0,
-      objectsDrawn
-    );
+      objectsDrawn += objectCount;
+    }
 
     renderpass.end();
 

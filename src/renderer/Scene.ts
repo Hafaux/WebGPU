@@ -4,10 +4,12 @@ import Quad from "../meshes/Quad";
 import Controls from "../input/Controls";
 import { mat4, vec2, vec3 } from "gl-matrix";
 import { RenderData } from "../definitions";
+import Cube from "../meshes/Cube";
 
 export default class Scene {
-  cubes: Triangle[] = [];
+  cubes: Cube[] = [];
   quads: Quad[] = [];
+  triangles: Triangle[] = [];
 
   camera: Camera;
 
@@ -35,7 +37,7 @@ export default class Scene {
     for (let i = 0; i < NUM_OBJECTS; i++) {
       const x = i * 3;
 
-      this.cubes.push(new Triangle([0, x, 1], 0));
+      this.cubes.push(new Cube([0, x, 1], 0));
 
       this.objectData.set(mat4.create(), i * 16);
     }
@@ -88,10 +90,10 @@ export default class Scene {
       this.cameraVelocity[1] * this.cameraSpeed * deltaT
     );
 
-    this.cubes.forEach((triangle, i) => {
-      triangle.update(deltaT);
+    this.cubes.forEach((cube, i) => {
+      cube.update(deltaT);
 
-      const model = triangle.getModel();
+      const model = cube.getModel();
 
       if (!model) return;
 
@@ -139,7 +141,9 @@ export default class Scene {
       viewTransform: this.camera.getView(),
       modelTransforms: this.objectData,
       objectCounts: {
-        TRIANGLE: this.cubes.length,
+        // Needs to be the same order as they were set in the objectData buffer. Refactor this later.
+        TRIANGLE: 0,
+        CUBE: this.cubes.length,
         QUAD: this.quads.length,
       },
     };

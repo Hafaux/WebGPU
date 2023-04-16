@@ -8,7 +8,7 @@ struct ObjectData {
 }
 
 @binding(0) @group(0) var<uniform> transformUBuffer: TransformData;
-@binding(3) @group(0) var<storage, read> objects: ObjectData;
+@binding(1) @group(0) var<storage, read> objects: ObjectData;
 
 struct Fragment {
     @builtin(position) Position : vec4<f32>,
