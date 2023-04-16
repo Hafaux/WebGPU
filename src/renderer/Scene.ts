@@ -5,6 +5,7 @@ import Controls from "../input/Controls";
 import { mat4, vec2, vec3 } from "gl-matrix";
 import { RenderData } from "../definitions";
 import Cube from "../meshes/Cube";
+import Obj from "../meshes/Obj";
 
 export default class Scene {
   cubes: Cube[] = [];
@@ -15,10 +16,12 @@ export default class Scene {
 
   objectData: Float32Array;
 
-  cameraSpeed = 0.03;
+  cameraSpeed = 0.01;
   cameraSensitivity = 0.1;
 
   cameraVelocity: vec2 = [0, 0];
+
+  obj: Obj;
 
   constructor() {
     this.camera = new Camera([-5, 0, 0.5], 0, 0);
@@ -27,6 +30,13 @@ export default class Scene {
 
     this.makeCubes();
     this.makeQuads();
+
+    this.obj = new Obj([0, 0, 2], 0);
+
+    this.objectData.set(
+      mat4.create(),
+      this.cubes.length * 16 + this.quads.length * 16
+    );
 
     this.initMouseMovement();
   }
@@ -109,6 +119,17 @@ export default class Scene {
 
       this.objectData.set(model, (i + this.cubes.length) * 16);
     });
+
+    this.obj.update(deltaT);
+
+    const model = this.obj.getModel();
+
+    if (model) {
+      this.objectData.set(
+        model,
+        this.cubes.length * 16 + this.quads.length * 16
+      );
+    }
 
     this.camera.update();
   }

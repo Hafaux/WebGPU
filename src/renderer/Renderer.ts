@@ -3,11 +3,10 @@ import vertexShader from "../shaders/vertex.wgsl?raw";
 import { TriangleMesh } from "../meshes/TriangleMesh";
 import { mat4 } from "gl-matrix";
 import { CubeMesh } from "../meshes/CubeMesh";
-import capyImg from "../images/capy.png";
-import floorImg from "../images/grass_0.png";
 import Material from "./Material";
 import { QuadMesh } from "../meshes/QuadMesh";
 import { RenderData, ObjectType } from "../definitions";
+import { ObjMesh } from "../meshes/ObjMesh";
 
 export default class Renderer {
   canvas: HTMLCanvasElement;
@@ -49,6 +48,8 @@ export default class Renderer {
 
   aspectRatio!: number;
   objectBuffer!: GPUBuffer;
+  objMesh!: ObjMesh;
+  defaultMaterial!: Material;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -226,16 +227,27 @@ export default class Renderer {
   }
 
   async createAssets() {
-    const defaultMaterial = new Material(this.device);
+    this.defaultMaterial = new Material(this.device);
     const quadMaterial = new Material(this.device);
+    const capyMaterial = new Material(this.device);
 
-    await defaultMaterial.initialize(capyImg, this.materialGroupLayout);
-    await quadMaterial.initialize(floorImg, this.materialGroupLayout);
+    await this.defaultMaterial.initialize(
+      "missing.webp",
+      this.materialGroupLayout
+    );
+    await capyMaterial.initialize("capy.png", this.materialGroupLayout);
+    await quadMaterial.initialize("grass_0.png", this.materialGroupLayout);
+
+    this.objMesh = new ObjMesh(this.device, "statue.obj");
+
+    await this.objMesh.init();
+
+    console.warn(this.objMesh);
 
     this.meshDict = {
       CUBE: {
         mesh: new CubeMesh(this.device),
-        defaultMaterial: defaultMaterial,
+        defaultMaterial: capyMaterial,
       },
       QUAD: {
         mesh: new QuadMesh(this.device),
@@ -243,7 +255,7 @@ export default class Renderer {
       },
       TRIANGLE: {
         mesh: new TriangleMesh(this.device),
-        defaultMaterial: defaultMaterial,
+        defaultMaterial: this.defaultMaterial,
       },
     };
   }
@@ -341,6 +353,13 @@ export default class Renderer {
 
       objectsDrawn += objectCount;
     }
+
+    renderpass.setVertexBuffer(0, this.objMesh.buffer);
+    renderpass.setBindGroup(1, this.defaultMaterial.bindGroup);
+
+    renderpass.draw(this.objMesh.model.vertexCount, 1, 0, objectsDrawn);
+
+    objectsDrawn += 1;
 
     renderpass.end();
 

@@ -1,3 +1,3 @@
 # WebGPU Experiments
 
-![](https://i.imgur.com/DEFkGL5.png)
+![](https://i.imgur.com/XnJmWox.png)

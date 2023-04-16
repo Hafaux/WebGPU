@@ -4,7 +4,6 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 const devToken = process.env.ORIGIN_TRIAL_TOKEN || "";
-console.warn(devToken);
 
 export default defineConfig({
   server: {
