@@ -1,3 +1,4 @@
+import GltfLoader from "./loaders/GltfLoader";
 import Renderer from "./renderer/Renderer";
 import Scene from "./renderer/Scene";
 
@@ -15,6 +16,10 @@ export default class App {
   async init() {
     try {
       await this.renderer.init();
+
+      const res = await GltfLoader.load(this.renderer.device, "Cube.gltf");
+
+      console.log(res);
 
       this.update(0);
     } catch (e) {
