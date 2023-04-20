@@ -17,13 +17,16 @@ export default class App {
     try {
       await this.renderer.init();
 
-      const res = await GltfLoader.load(this.renderer.device, "Cube.gltf");
+      const res = await GltfLoader.load(
+        this.renderer.device,
+        "AntiqueCamera.gltf"
+      );
 
       console.log(res);
 
       this.update(0);
     } catch (e) {
-      alert("WebGPU is not supported in this browser: " + e);
+      alert("WebGPU failed to execute: " + e);
     }
   }
 
