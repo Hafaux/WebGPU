@@ -1,6 +1,13 @@
 import ObjLoader, { ObjModel } from "../loaders/ObjLoader";
 
-export class ObjMesh {
+interface Mesh {
+  buffer: GPUBuffer;
+  bufferLayout: GPUVertexBufferLayout;
+
+  model: ObjModel;
+}
+
+export class ObjMesh implements Mesh {
   buffer!: GPUBuffer;
   bufferLayout!: GPUVertexBufferLayout;
 
